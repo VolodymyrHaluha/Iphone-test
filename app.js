@@ -102,6 +102,13 @@ $('createForm').addEventListener('submit', async e => {
     const members = [state.me.uid, ...ids].sort();
     const chatId = group ? doc(collection(state.db, 'chats')).id : `dm_${members.join('_')}`;
     const chatRef = doc(state.db, 'chats', chatId);
+    // An existing DM is already visible in the authorized chat list.
+    // Opening it avoids an invalid attempt to overwrite protected fields.
+    if (!group && state.chats.some(c => c.id === chatId)) {
+      closeModal('createModal');
+      selectChat(chatId);
+      return;
+    }
     const payload = {
       type: group ? 'group' : 'private',
       name: group ? name : '',
