@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080c19" />
+  <meta name="description" content="NEON SPIN — інтерактивна 3D-фігура та приватний месенджер." />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./style.css" />
+  <title>NEON SPIN • Месенджер</title>
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="#spin" aria-label="NEON SPIN — головна"><span class="brand-icon"><img src="./icons/favicon.svg" alt="" /></span><span><strong>NEON<span>SPIN</span></strong><small>3D SPACE & CHAT</small></span></a>
+      <nav class="main-nav" aria-label="Розділи"><button class="nav-btn active" data-page="spin">◈ 3D Studio</button><button class="nav-btn" data-page="chat">◉ Месенджер</button></nav>
+      <div class="account"><span id="accountLabel" class="account-label">Гість</span><button id="accountButton" class="btn btn-ghost btn-small">Увійти</button></div>
+    </header>
+
+    <main>
+      <section id="spinPage" class="page spin-page">
+        <div class="hero-heading"><span class="eyebrow"><span class="live-dot"></span> INTERACTIVE 3D EXPERIENCE</span><h1>Крути простір.<br/><span>Лови неон.</span></h1><p>Обертай фігуру мишкою або пальцем, виставляй точні кути й повертайся до нуля одним натисканням.</p></div>
+        <div class="studio-layout">
+          <div id="scene" class="scene" tabindex="0" aria-label="3D-куб; перетягуйте для обертання">
+            <div class="scene-grid"></div><div class="scene-glow"></div>
+            <div class="cube-wrap"><div id="cube" class="cube"><div class="face front"><span>NEON</span></div><div class="face back"><span>SPIN</span></div><div class="face right"></div><div class="face left"></div><div class="face top"></div><div class="face bottom"></div></div></div>
+            <div class="scene-hint">↔ Перетягуй для обертання</div><div class="scene-axis">X / Y / Z</div>
+          </div>
+          <aside class="panel controls"><div class="panel-top"><span class="eyebrow">CONTROL CENTER</span><span class="tag">LIVE</span></div><h2>Координати обертання</h2><p class="muted">Від −180° до +180°. Рух мишкою змінює X та Y.</p>
+            <div class="axis-control"><div class="axis-head"><label for="xRange"><b class="axis x">X</b> Вісь X</label><output id="xValue">0°</output></div><input id="xRange" type="range" min="-180" max="180" value="0" /></div>
+            <div class="axis-control"><div class="axis-head"><label for="yRange"><b class="axis y">Y</b> Вісь Y</label><output id="yValue">0°</output></div><input id="yRange" type="range" min="-180" max="180" value="0" /></div>
+            <div class="axis-control"><div class="axis-head"><label for="zRange"><b class="axis z">Z</b> Вісь Z</label><output id="zValue">0°</output></div><input id="zRange" type="range" min="-180" max="180" value="0" /></div>
+            <div class="coords"><div><small>ROTATION X</small><strong id="xRead">000°</strong></div><div><small>ROTATION Y</small><strong id="yRead">000°</strong></div><div><small>ROTATION Z</small><strong id="zRead">000°</strong></div></div>
+            <button id="resetRotation" class="btn btn-primary full">↺ Скинути до 0°</button>
+          </aside>
+        </div>
+      </section>
+
+      <section id="chatPage" class="page chat-page hidden">
+        <div class="chat-heading"><div><span class="eyebrow"><span class="live-dot"></span> ENCRYPTED IN TRANSIT · REALTIME</span><h1>Neon <span>Chat</span></h1><p class="muted">Особисті та групові чати в одному просторі.</p></div><button id="newChat" class="btn btn-primary">＋ Новий чат</button></div>
+        <div id="chatLoginNotice" class="chat-login-notice"><div class="notice-icon">◎</div><h2>Твої повідомлення чекають</h2><p>Увійди або створи акаунт за нікнеймом, щоб листуватися з іншими користувачами NEON SPIN.</p><button id="noticeLogin" class="btn btn-primary">Увійти / зареєструватись</button></div>
+        <div id="chatApp" class="chat-layout hidden">
+          <aside class="chat-sidebar"><div class="sidebar-top"><h2>Розмови <span id="chatCount" class="count">0</span></h2><input id="chatSearch" class="search-input" placeholder="Пошук чатів…" autocomplete="off" /></div><div id="conversationList" class="conversation-list"><p class="empty-mini">Поки немає чатів.</p></div><div class="sidebar-footer"><span class="live-dot"></span> Синхронізовано через Firebase</div></aside>
+          <div class="chat-detail"><div id="chatEmpty" class="chat-empty"><div class="notice-icon">✦</div><h2>Обери розмову</h2><p>Або створи новий приватний чи груповий чат.</p></div>
+            <div id="activeChat" class="active-chat hidden"><div class="chat-toolbar"><button id="backToChats" class="icon-button mobile-back" title="Назад">←</button><div id="chatAvatar" class="avatar">✦</div><div class="toolbar-text"><strong id="chatTitle">Чат</strong><small id="chatSubtitle">Повідомлення</small></div><span class="tag">● LIVE</span></div><div id="messageList" class="messages" aria-live="polite"></div><form id="sendForm" class="composer"><textarea id="messageInput" placeholder="Напиши повідомлення…" rows="1" maxlength="2000" aria-label="Повідомлення" required></textarea><button id="sendButton" class="send-button" title="Надіслати" type="submit">➤</button></form></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="footer">NEON SPIN © 2026 <span>•</span> BUILD YOUR OWN SPACE</footer>
+  </div>
+
+  <div id="authModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle"><div class="modal-card"><button class="close-modal" data-close="authModal" aria-label="Закрити">×</button><span class="eyebrow">YOUR ACCESS TO NEON</span><h2 id="authTitle">З поверненням!</h2><p class="muted">Вхід за нікнеймом та паролем.</p><div class="tab-row"><button class="tab active" id="loginTab">Увійти</button><button class="tab" id="registerTab">Реєстрація</button></div><form id="authForm"><label for="nickname">Нікнейм</label><input id="nickname" type="text" minlength="3" maxlength="20" pattern="[A-Za-z0-9_]{3,20}" placeholder="наприклад, neon_user" autocomplete="username" required/><small>3–20 символів: латинські літери, цифри, _</small><label for="password">Пароль</label><input id="password" type="password" minlength="8" placeholder="Мінімум 8 символів" autocomplete="current-password" required/><p id="authError" class="form-error" role="alert"></p><button id="authSubmit" class="btn btn-primary full" type="submit">Увійти</button></form><p class="modal-note">Без email немає автоматичного відновлення пароля. Збережи пароль у надійному місці.</p></div></div>
+
+  <div id="createModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="createTitle"><div class="modal-card"><button class="close-modal" data-close="createModal" aria-label="Закрити">×</button><span class="eyebrow">START A CONVERSATION</span><h2 id="createTitle">Новий чат</h2><div class="tab-row"><button id="privateTab" class="tab active">Приватний</button><button id="groupTab" class="tab">Груповий</button></div><form id="createForm"><div id="groupNameWrap" class="hidden"><label for="groupName">Назва групи</label><input id="groupName" maxlength="60" placeholder="Наприклад: Наша команда" /></div><label for="userSearch">Знайти користувача за нікнеймом</label><input id="userSearch" placeholder="Пошук користувачів…" autocomplete="off"/><div id="userChoices" class="user-choices"></div><p id="selectedHint" class="muted mini">Обери одного користувача.</p><p id="createError" class="form-error" role="alert"></p><button id="createSubmit" class="btn btn-primary full" type="submit">Створити чат</button></form></div></div>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

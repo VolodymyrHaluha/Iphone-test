@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMember(chat) {
+      return signedIn() && request.auth.uid in chat.memberIds;
+    }
+    function chatExists(chatId) {
+      return exists(/databases/$(database)/documents/chats/$(chatId));
+    }
+    function belongsToChat(chatId) {
+      return signedIn()
+        && chatExists(chatId)
+        && isMember(get(/databases/$(database)/documents/chats/$(chatId)).data);
+    }
+
+    match /users/{userId} {
+      // Користувачі бачать лише публічні профілі; паролі тут не зберігаються.
+      allow get, list: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['uid', 'nickname', 'createdAt'])
+        && request.resource.data.keys().hasAll(['uid', 'nickname', 'createdAt'])
+        && request.resource.data.uid == userId
+        && request.resource.data.nickname is string
+        && request.resource.data.nickname.matches('^[a-z0-9_]{3,20}$')
+        && request.auth.token.email == request.resource.data.nickname + '@neonspin.example'
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    match /chats/{chatId} {
+      allow get, list: if isMember(resource.data);
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['type','name','memberIds','createdBy','createdAt','updatedAt','lastText','lastSenderId'])
+        && request.resource.data.keys().hasAll(['type','name','memberIds','createdBy','createdAt','updatedAt','lastText','lastSenderId'])
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.type in ['private','group']
+        && request.resource.data.memberIds is list
+        && request.resource.data.memberIds.size() >= 2
+        && request.resource.data.memberIds.size() <= 30
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds.toSet().size() == request.resource.data.memberIds.size()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 60
+        && request.resource.data.lastText == ''
+        && request.resource.data.lastSenderId == ''
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && (
+          (request.resource.data.type == 'private'
+            && request.resource.data.memberIds.size() == 2
+            && request.resource.data.name == ''
+            && chatId == 'dm_' + request.resource.data.memberIds[0] + '_' + request.resource.data.memberIds[1])
+          ||
+          (request.resource.data.type == 'group'
+            && request.resource.data.memberIds.size() >= 3
+            && request.resource.data.name.size() >= 2)
+        );
+
+      // Відправник оновлює тільки текст попереднього повідомлення і час.
+      // Склад учасників, автор, тип і назва чату незмінні.
+      allow update: if isMember(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['lastText','lastSenderId','updatedAt'])
+        && request.resource.data.lastText is string
+        && request.resource.data.lastText.size() <= 120
+        && request.resource.data.lastSenderId == request.auth.uid
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow get, list: if belongsToChat(chatId);
+        allow create: if belongsToChat(chatId)
+          && request.resource.data.keys().hasOnly(['senderId','text','createdAt'])
+          && request.resource.data.keys().hasAll(['senderId','text','createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
