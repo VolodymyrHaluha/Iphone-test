@@ -77,9 +77,87 @@ function setCreateMode(mode){state.createMode=mode;state.selected.clear();$('pri
 $('newChat').addEventListener('click',()=>{if(!state.me)return showModal('authModal');setCreateMode('private');$('userSearch').value='';$('groupName').value='';$('createError').textContent='';showModal('createModal')});
 $('privateTab').addEventListener('click',()=>setCreateMode('private'));$('groupTab').addEventListener('click',()=>setCreateMode('group'));$('userSearch').addEventListener('input',renderChoices);
 function renderChoices(){const root=$('userChoices');root.replaceChildren();const s=$('userSearch').value.trim().toLowerCase();const found=state.users.filter(u=>typeof u.nickname==='string'&&u.nickname.includes(s)).slice(0,50);if(!found.length){root.append(elem('p','empty-mini','Немає користувачів.'));return}for(const u of found){const selected=state.selected.has(u.uid);const btn=elem('button','user-choice'+(selected?' selected':''));btn.type='button';btn.append(elem('span','mini-avatar',selected?'✓':u.nickname[0].toUpperCase()),elem('span','',`@${u.nickname}`));btn.addEventListener('click',()=>{if(state.createMode==='private')state.selected.clear();if(selected)state.selected.delete(u.uid);else state.selected.add(u.uid);$('selectedHint').textContent=`Обрано: ${state.selected.size}`;renderChoices()});root.append(btn)}}
-$('createForm').addEventListener('submit',async e=>{e.preventDefault();if(state.busy||!state.me)return;const ids=[...state.selected],group=state.createMode==='group',name=$('groupName').value.trim();if((group&&ids.length<2)||(!group&&ids.length!==1)){$('createError').textContent=group?'Обери щонайменше 2 учасників.':'Обери одного користувача.';return}if(group&&(name.length<2||name.length>60)){$('createError').textContent='Назва групи: 2–60 символів.';return}state.busy=true;$('createSubmit').disabled=true;$('createError').textContent='';try{const members=[state.me.uid,...ids].sort();const chatId=group?doc(collection(state.db,'chats')).id:`dm_${members.join('_')}`;const chatRef=doc(state.db,'chats',chatId);if(!group){const existing=await getDoc(chatRef);if(existing.exists()){closeModal('createModal');if(!state.chats.some(c=>c.id===chatId)){state.chats.push({id:chatId,...existing.data()})}selectChat(chatId);return}}await setDoc(chatRef,{type:group?'group':'private',name:group?name:'',memberIds:members,createdBy:state.me.uid,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),lastText:'',lastSenderId:''});closeModal('createModal');toast('Чат створено!');state.selected.clear(); // listener will populate this chat
- state.activeId=chatId;state.activeChat={id:chatId,type:group?'group':'private',name:group?name:'',memberIds:members};showActive(state.activeChat);renderHeader();$('chatApp').classList.add('chat-open');state.messageUnsub?.();state.messageUnsub=onSnapshot(query(collection(state.db,'chats',chatId,'messages'),orderBy('createdAt','desc'),limit(100)),s=>renderMessages(s.docs.map(d=>d.data()).reverse()),err=>toast(errorText(err)));
- }catch(err){$('createError').textContent=errorText(err)}finally{state.busy=false;$('createSubmit').disabled=false}});
+$('createForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (state.busy || !state.me) return;
+
+  const ids = [...state.selected];
+  const group = state.createMode === 'group';
+  const name = $('groupName').value.trim();
+  const error = $('createError');
+  error.textContent = '';
+
+  if ((group && ids.length < 2) || (!group && ids.length !== 1)) {
+    error.textContent = group ? 'Обери щонайменше 2 учасників.' : 'Обери одного користувача.';
+    return;
+  }
+  if (group && (name.length < 2 || name.length > 60)) {
+    error.textContent = 'Назва групи: 2–60 символів.';
+    return;
+  }
+
+  state.busy = true;
+  $('createSubmit').disabled = true;
+  try {
+    const members = [state.me.uid, ...ids].sort();
+    const chatId = group ? doc(collection(state.db, 'chats')).id : `dm_${members.join('_')}`;
+    const chatRef = doc(state.db, 'chats', chatId);
+    const payload = {
+      type: group ? 'group' : 'private',
+      name: group ? name : '',
+      memberIds: members,
+      createdBy: state.me.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      lastText: '',
+      lastSenderId: ''
+    };
+
+    // Do not read an absent chat first: Firestore rules correctly deny reads
+    // of non-existent chats to protect private conversations.
+    try {
+      await setDoc(chatRef, payload);
+    } catch (creationError) {
+      // A deterministic private chat may already exist. setDoc would then
+      // become an update, which our security rules intentionally deny.
+      // Only treat it as an existing conversation after a permitted read.
+      if (group || creationError?.code !== 'permission-denied') throw creationError;
+      let existing;
+      try {
+        existing = await getDoc(chatRef);
+      } catch (_) {
+        throw creationError;
+      }
+      if (!existing.exists() ||
+          !Array.isArray(existing.data().memberIds) ||
+          !existing.data().memberIds.includes(state.me.uid)) {
+        throw creationError;
+      }
+      if (!state.chats.some(c => c.id === chatId)) {
+        state.chats.push({id: chatId, ...existing.data()});
+      }
+      closeModal('createModal');
+      selectChat(chatId);
+      toast('Відкрито наявний чат.');
+      return;
+    }
+
+    closeModal('createModal');
+    toast('Чат створено!');
+    state.selected.clear();
+    // Add locally to avoid waiting for the real-time chats listener.
+    const provisional = {id: chatId, ...payload};
+    state.chats = state.chats.filter(c => c.id !== chatId);
+    state.chats.unshift(provisional);
+    selectChat(chatId);
+  } catch (err) {
+    console.error('[NEON SPIN] Create chat:', err);
+    error.textContent = errorText(err);
+  } finally {
+    state.busy = false;
+    $('createSubmit').disabled = false;
+  }
+});
 
 // Boot Firebase with precise diagnostics (instead of a misleading config warning).
 function firebaseStatus(message, isError = false) {
